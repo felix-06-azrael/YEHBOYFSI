@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>YEHBOY SERVER — BRANCH SELECT</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600&display=swap');
+  :root{
+    --bg:#090c10; --panel:#10151d; --off:#232b36; --line:#202a38;
+    --text:#e7edf5; --text-dim:#7f8ca0; --accent:#21e6c1; --danger:#ff3b5c;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; }
+  body{ display:flex; align-items:center; justify-content:center; padding:20px; }
+  .card{ width:100%; max-width:340px; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px 24px; text-align:center; }
+  .icon{ font-size:30px; margin-bottom:10px; }
+  .title{ font-family:'JetBrains Mono',monospace; font-weight:800; font-size:16px; letter-spacing:.06em; margin-bottom:4px; }
+  .sub{ font-size:11.5px; color:var(--text-dim); margin-bottom:18px; }
+  .input{ width:100%; background:var(--off); border:1px solid var(--line); border-radius:9px; padding:12px 14px; color:var(--text); font-family:'JetBrains Mono',monospace; font-size:15px; letter-spacing:.15em; text-align:center; outline:none; margin-bottom:12px; }
+  .input:focus{ border-color:var(--accent); }
+  .btn{ width:100%; background:var(--accent); border:none; border-radius:9px; padding:12px; font-weight:700; font-size:13px; letter-spacing:.04em; color:#04211c; cursor:pointer; }
+  .error{ color:var(--danger); font-size:11px; margin-top:10px; min-height:14px; }
+
+  .branch-grid{ display:flex; flex-direction:column; gap:8px; margin-top:6px; }
+  .branch-btn{ background:var(--off); border:1px solid var(--line); border-radius:10px; padding:13px; color:var(--text); font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px; letter-spacing:.05em; cursor:pointer; text-align:left; display:flex; justify-content:space-between; align-items:center; }
+  .branch-btn:active{ background:#182130; }
+  .branch-btn .arrow{ color:var(--accent); }
+  .note{ margin-top:16px; font-size:9.5px; color:var(--text-dim); line-height:1.5; }
+</style>
+</head>
+<body>
+
+  <div class="card" id="lockCard">
+    <div class="icon">🔒</div>
+    <div class="title">YEHBOY SERVER</div>
+    <div class="sub">Master access</div>
+    <input type="password" class="input" id="pwInput" placeholder="PASSWORD" autocomplete="off">
+    <button class="btn" id="pwSubmit">UNLOCK</button>
+    <div class="error" id="err"></div>
+  </div>
+
+  <div class="card" id="pickCard" style="display:none;">
+    <div class="icon">🏢</div>
+    <div class="title">SELECT BRANCH</div>
+    <div class="sub">Tap a store to open its live board</div>
+    <div class="branch-grid" id="branchGrid"></div>
+    <div class="note">Each branch link only works while your phone/PC<br>is on that branch's own WiFi network.</div>
+  </div>
+
+<script>
+  const MASTER_PASSWORD = "YEHEYBOY";
+
+  // ---------------------------------------------------------
+  // EDIT THESE with each branch's real IP + filename once
+  // you know them (static IP reservations recommended so
+  // these never go stale — see notes below).
+  // ---------------------------------------------------------
+  const BRANCHES = {
+    "FD_GUIMBA":   "http://192.168.4.5/guimba.html",
+    "FD_TALAVERA": "http://192.168.1.5/talavera.html",
+    "FD_MUNOZ":    "http://192.168.2.5/munoz.html",
+    "FD_SANJOSE":  "http://192.168.3.5/sanhose.html",
+    "FD_ROSARIO":  "http://192.168.5.5/rosario.html"
+  };
+
+  document.getElementById('pwSubmit').onclick = tryPassword;
+  document.getElementById('pwInput').addEventListener('keydown', e=>{ if(e.key==='Enter') tryPassword(); });
+
+  function tryPassword(){
+    const val = document.getElementById('pwInput').value.trim();
+    if(val === MASTER_PASSWORD){
+      document.getElementById('err').textContent = '';
+      showPicker();
+    } else {
+      document.getElementById('err').textContent = 'WRONG PASSWORD';
+      document.getElementById('pwInput').value = '';
+    }
+  }
+
+  function showPicker(){
+    document.getElementById('lockCard').style.display = 'none';
+    const grid = document.getElementById('branchGrid');
+    grid.innerHTML = '';
+    Object.keys(BRANCHES).forEach(name=>{
+      const btn = document.createElement('div');
+      btn.className = 'branch-btn';
+      btn.innerHTML = `<span>${name}</span><span class="arrow">›</span>`;
+      btn.onclick = ()=>{ window.location.href = BRANCHES[name]; };
+      grid.appendChild(btn);
+    });
+    document.getElementById('pickCard').style.display = 'block';
+  }
+</script>
+</body>
+</html>
