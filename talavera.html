@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>YEHBOY SERVER — FD_TALAVERA</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:            #090c10;
+    --panel:         #10151d;
+    --panel-2:       #141b25;
+    --line:          #202a38;
+    --text:          #e7edf5;
+    --text-dim:      #7f8ca0;
+    --accent:        #21e6c1;
+    --standby:       #ff9f1c;
+    --active:        #17d97a;
+    --zread:         #3d8bfd;
+    --off:           #232b36;
+    --danger:        #ff3b5c;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased; min-height:100vh; }
+  body{ display:flex; justify-content:center; padding:18px 12px 40px; }
+  .board{ width:100%; max-width:460px; }
+
+  .lock-overlay{
+    position:fixed; inset:0; z-index:50;
+    background:radial-gradient(circle at 50% 30%, #121a24, #05070a 75%);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .lock-card{ width:100%; max-width:340px; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px 24px; text-align:center; }
+  .lock-icon{ font-size:30px; margin-bottom:10px; }
+  .lock-title{ font-family:'JetBrains Mono',monospace; font-weight:800; font-size:16px; letter-spacing:.06em; margin-bottom:4px; }
+  .lock-sub{ font-size:11.5px; color:var(--text-dim); margin-bottom:18px; }
+  .lock-input{ width:100%; background:var(--off); border:1px solid var(--line); border-radius:9px; padding:12px 14px; color:var(--text); font-family:'JetBrains Mono',monospace; font-size:15px; letter-spacing:.15em; text-align:center; outline:none; margin-bottom:12px; }
+  .lock-input:focus{ border-color:var(--accent); }
+  .lock-btn{ width:100%; background:var(--accent); border:none; border-radius:9px; padding:12px; font-weight:700; font-size:13px; letter-spacing:.04em; color:#04211c; cursor:pointer; }
+  .lock-btn:active{ opacity:.85; }
+  .lock-error{ color:var(--danger); font-size:11px; margin-top:10px; min-height:14px; }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .brand{ display:flex; align-items:center; gap:8px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.12em; color:var(--text-dim); text-transform:uppercase; }
+  .conn-dot{ width:8px; height:8px; border-radius:50%; background:var(--active); box-shadow:0 0 8px var(--active); animation: blink-green 1.4s ease-in-out infinite; }
+  .conn-dot.down{ background:var(--danger); box-shadow:0 0 8px var(--danger); animation: blink-red 0.9s ease-in-out infinite; }
+  .conn-label{ font-size:10px; }
+  .clock{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-dim); }
+
+  .server-card{ background:linear-gradient(180deg, var(--panel-2), var(--panel)); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:16px; position:relative; overflow:hidden; }
+  .server-card::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); box-shadow:0 0 12px var(--accent); }
+  .server-name{ font-family:'JetBrains Mono',monospace; font-weight:800; font-size:22px; letter-spacing:.02em; color:var(--text); }
+  .server-sub{ margin-top:4px; font-size:11.5px; color:var(--text-dim); display:flex; gap:14px; flex-wrap:wrap; }
+  .server-sub b{ color:var(--accent); font-weight:600; }
+
+  .summary-row{ display:flex; gap:8px; margin-top:12px; }
+  .summary-chip{ flex:1; background:var(--off); border-radius:9px; padding:8px 6px; text-align:center; }
+  .summary-chip .n{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:16px; }
+  .summary-chip .l{ font-size:9px; letter-spacing:.08em; color:var(--text-dim); text-transform:uppercase; margin-top:2px; }
+  .summary-chip.active .n{ color:var(--active); }
+  .summary-chip.zread .n{ color:var(--zread); }
+  .summary-chip.standby .n{ color:var(--standby); }
+
+  .legend{ display:flex; justify-content:space-between; gap:6px; flex-wrap:wrap; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:14px; font-size:9.5px; color:var(--text-dim); }
+  .legend .item{ display:flex; align-items:center; gap:5px; }
+  .legend .sw{ width:8px; height:8px; border-radius:3px; }
+
+  .grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; }
+  .pos-cell{ background:var(--panel); border:1px solid var(--line); border-radius:11px; padding:8px 6px 7px; display:flex; flex-direction:column; align-items:center; gap:5px; position:relative; }
+  .winpos-dot{ position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%; background:var(--off); }
+  .winpos-dot.on{ background:var(--zread); box-shadow:0 0 6px rgba(61,139,253,.7); }
+
+  .box{ width:100%; border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-weight:700; transition: background .35s ease, box-shadow .35s ease, color .35s ease; }
+  .box-a{ height:30px; font-size:13px; background:var(--standby); color:#241300; }
+  .box-a.on{ background:var(--active); color:#04210f; box-shadow:0 0 10px rgba(23,217,122,.55); }
+  .box-b{ height:20px; font-size:9px; letter-spacing:.04em; background:var(--off); color:var(--text-dim); }
+  .box-b.on{ background:var(--active); color:#04210f; box-shadow:0 0 8px rgba(23,217,122,.45); animation: pulse-soft 1.6s ease-in-out infinite; }
+  .box-c{ height:20px; font-size:9px; letter-spacing:.04em; background:var(--off); color:var(--text-dim); }
+  .box-c.on{ background:var(--zread); color:#04122b; box-shadow:0 0 8px rgba(61,139,253,.5); }
+  .pos-ip{ font-family:'JetBrains Mono',monospace; font-size:7.5px; color:var(--text); letter-spacing:.02em; min-height:9px; }
+
+  @keyframes blink-green{ 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
+  @keyframes blink-red{ 0%,100%{ opacity:1; } 50%{ opacity:.2; } }
+  @keyframes pulse-soft{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.18); } }
+
+  .footer-note{ margin-top:16px; text-align:center; font-size:10px; color:var(--text-dim); font-family:'JetBrains Mono',monospace; }
+</style>
+</head>
+<body>
+
+<div class="lock-overlay" id="lockOverlay">
+  <div class="lock-card">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">YEHBOY SERVER</div>
+    <div class="lock-sub">FD_TALAVERA</div>
+    <input type="password" class="lock-input" id="pwInput" placeholder="PASSWORD" autocomplete="off">
+    <button class="lock-btn" id="pwSubmit">UNLOCK</button>
+    <div class="lock-error" id="lockError"></div>
+  </div>
+</div>
+
+<div class="board" id="mainBoard" style="display:none;">
+  <div class="topbar">
+    <div class="brand"><span class="conn-dot" id="connDot"></span><span class="conn-label" id="connLabel">CONNECTED</span></div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+
+  <div class="server-card">
+    <div class="server-name">FD_TALAVERA</div>
+    <div class="server-sub">
+      <span>IP <b id="serverIp">--</b></span>
+      <span>LAST BACKUP <b id="lastBackup">--</b></span>
+    </div>
+    <div class="summary-row">
+      <div class="summary-chip active"><div class="n" id="sumActive">0</div><div class="l">Active</div></div>
+      <div class="summary-chip zread"><div class="n" id="sumZ">0</div><div class="l">Z-Read OK</div></div>
+      <div class="summary-chip standby"><div class="n" id="sumStandby">0</div><div class="l">Standby</div></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="item"><span class="sw" style="background:var(--standby)"></span>Standby</div>
+    <div class="item"><span class="sw" style="background:var(--active)"></span>Active</div>
+    <div class="item"><span class="sw" style="background:var(--zread)"></span>Z-Read OK</div>
+    <div class="item"><span class="sw" style="background:var(--zread);border-radius:50%"></span>WinPOS ON</div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="footer-note">SESSION LOCKS AFTER 15 MIN IDLE · TAP TO REFRESH</div>
+</div>
+
+<script>
+  const POS_COUNT = 18;
+  const SESSION_MS = 15 * 60 * 1000;
+  const POLL_MS = 1000;
+  const BRANCH_PASSWORD = "YEHBOY";
+
+  function isUnlocked(){
+    const t = sessionStorage.getItem('yehboy_unlock_time');
+    if(!t) return false;
+    return (Date.now() - parseInt(t,10)) < SESSION_MS;
+  }
+  function lock(){
+    sessionStorage.removeItem('yehboy_unlock_time');
+    document.getElementById('mainBoard').style.display = 'none';
+    document.getElementById('lockOverlay').style.display = 'flex';
+    document.getElementById('pwInput').value = '';
+  }
+  function unlock(){
+    sessionStorage.setItem('yehboy_unlock_time', Date.now());
+    document.getElementById('lockOverlay').style.display = 'none';
+    buildGrid();
+    document.getElementById('mainBoard').style.display = 'block';
+    poll();
+    setInterval(poll, POLL_MS);
+    setInterval(()=>{ if(!isUnlocked()) lock(); }, 5000);
+  }
+  document.getElementById('pwSubmit').onclick = tryPassword;
+  document.getElementById('pwInput').addEventListener('keydown', e=>{ if(e.key==='Enter') tryPassword(); });
+  function tryPassword(){
+    const val = document.getElementById('pwInput').value.trim();
+    const err = document.getElementById('lockError');
+    if(val === BRANCH_PASSWORD){ err.textContent=''; unlock(); }
+    else { err.textContent = 'WRONG PASSWORD'; document.getElementById('pwInput').value=''; }
+  }
+
+  function buildGrid(){
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    for(let i=1;i<=POS_COUNT;i++){
+      const cell = document.createElement('div');
+      cell.className = 'pos-cell';
+      cell.innerHTML = `
+        <div class="winpos-dot" id="dot-${i}"></div>
+        <div class="box box-a" id="a-${i}">${i}</div>
+        <div class="box box-b" id="b-${i}">RUN</div>
+        <div class="box box-c" id="c-${i}">Z</div>
+        <div class="pos-ip" id="ip-${i}">--</div>
+      `;
+      grid.appendChild(cell);
+    }
+  }
+
+  function setConn(ok){
+    document.getElementById('connDot').classList.toggle('down', !ok);
+    document.getElementById('connLabel').textContent = ok ? 'CONNECTED' : 'NOT DETECTED';
+  }
+
+  function render(data){
+    document.getElementById('serverIp').textContent = data.ip || '--';
+    document.getElementById('lastBackup').textContent = data.lastBackup || '--';
+    let active=0, zok=0, standby=0;
+    for(let i=1;i<=POS_COUNT;i++){
+      const p = (data.pos && data.pos[i]) || {};
+      document.getElementById('a-'+i).classList.toggle('on', !!p.a);
+      document.getElementById('b-'+i).classList.toggle('on', !!p.run);
+      document.getElementById('c-'+i).classList.toggle('on', !!p.z);
+      document.getElementById('dot-'+i).classList.toggle('on', !!p.active);
+      document.getElementById('ip-'+i).textContent = p.ip || '--';
+      if(p.a) active++; else standby++;
+      if(p.z) zok++;
+    }
+    document.getElementById('sumActive').textContent = active;
+    document.getElementById('sumZ').textContent = zok;
+    document.getElementById('sumStandby').textContent = standby;
+  }
+
+  let lastTs = null;
+  let lastTsChangeAt = Date.now();
+  let missCount = 0;
+  const STALE_MS = 10000;
+  const MISS_THRESHOLD = 3;
+
+  function resetBoard(){
+    render({ ip:'--', lastBackup:'--', pos:{} });
+  }
+
+  async function poll(){
+    try{
+      const res = await fetch('status.json', { cache:'no-store' });
+      if(!res.ok) throw new Error('bad response');
+      const data = await res.json();
+
+      if(data.ts !== lastTs){
+        lastTs = data.ts;
+        lastTsChangeAt = Date.now();
+      }
+
+      const stale = (Date.now() - lastTsChangeAt) > STALE_MS;
+      missCount = stale ? (missCount + 1) : 0;
+
+      if(missCount >= MISS_THRESHOLD){
+        setConn(false);
+        resetBoard();
+      } else {
+        setConn(true);
+        render(data);
+      }
+    }catch(e){
+      missCount++;
+      if(missCount >= MISS_THRESHOLD){
+        setConn(false);
+        resetBoard();
+      }
+    }
+  }
+
+  function tickClock(){ document.getElementById('clock').textContent = new Date().toLocaleTimeString([], { hour12:false }); }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  if(isUnlocked()){ unlock(); } else { lock(); }
+</script>
+</body>
+</html>
